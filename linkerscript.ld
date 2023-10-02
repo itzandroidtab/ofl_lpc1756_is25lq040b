@@ -17,7 +17,7 @@ Memories definitions
 */
 MEMORY
 {
-    ram (rwx) : org = 0x20000000, len = 32k
+    ram (rwx) : org = 0x10000000, len = 16k
 }
 
 /*

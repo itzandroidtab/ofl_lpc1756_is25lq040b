@@ -32,6 +32,16 @@ add_executable(flash_loader
     ${SOURCES} ${HEADERS} 
 )
 
+# add the include directories for klib, the target and the arm files
+target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/")
+target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/targets/lpc1756/")
+target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/targets/arm/")
+
+# set the interrupt method, the target and if we we support low power sleep
+target_compile_definitions(flash_loader PUBLIC "KLIB_IRQ=irq_ram")
+target_compile_definitions(flash_loader PUBLIC "TARGET_CPU=lpc1756")
+target_compile_definitions(flash_loader PUBLIC "TARGET_LOW_POWER_SLEEP=0")
+
 # enable C++20 support for the library
 target_compile_features(flash_loader PUBLIC cxx_std_20)
 
@@ -43,8 +53,8 @@ target_compile_options(flash_loader PRIVATE "-g")
 target_compile_options(flash_loader PRIVATE "-Os")
 
 # set the cpu options for the compiler
-target_compile_options(flash_loader PRIVATE "-march=armv7e-m")
-target_compile_options(flash_loader PRIVATE "-mcpu=cortex-m4")
+target_compile_options(flash_loader PRIVATE "-march=armv7-m")
+target_compile_options(flash_loader PRIVATE "-mcpu=cortex-m3")
 target_compile_options(flash_loader PRIVATE "-mthumb")
 
 # other compiler settings
@@ -71,8 +81,8 @@ target_compile_options(flash_loader PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-fno-use-cx
 target_compile_options(flash_loader PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-Wno-volatile>)
 
 # set the cpu options for the linker
-target_link_options(flash_loader PRIVATE "-march=armv7e-m")
-target_link_options(flash_loader PRIVATE "-mcpu=cortex-m4")
+target_link_options(flash_loader PRIVATE "-march=armv7-m")
+target_link_options(flash_loader PRIVATE "-mcpu=cortex-m3")
 target_link_options(flash_loader PRIVATE "-mthumb")
 
 # other linker options

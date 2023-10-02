@@ -1,6 +1,20 @@
 #include <cstdint>
 #include "flash_os.hpp"
 
+#include <klib/klib.hpp>
+#include <io/pins.hpp>
+#include <io/spi.hpp>
+#include <io/system.hpp>
+
+#include <klib/delay.hpp>
+#include <klib/hardware/memory/is25lq040b.hpp>
+
+namespace target = klib::target;
+
+using cs = target::io::pin_out<target::pins::package::lqfp_80::p50>;
+using spi = target::io::spi<target::io::periph::lqfp_80::spi0>;
+using memory = klib::hardware::memory::is25lq040b<spi, cs>;
+
 /**
  * @brief Smallest amount of data that can be programmed
  * 
@@ -22,7 +36,7 @@
  * a chip.
  * 
  */
-#define CHIP_ERASE (false)
+#define CHIP_ERASE (true)
 
 /**
  * @brief If value is true only uniform sectors are allowed on the device. 
@@ -61,21 +75,21 @@ extern "C" {
 }
 
 // definition for the flash device
-const __attribute__ ((section("DevDscr"), __used__)) flash_device FlashDevice = {
+const flash_device FlashDevice __attribute__ ((section ("DevDscr"), __used__)) = {
     flash_drv_version, // driver version
-    "test device", // device name
+    "is25lq040b", // device name
     device_type::on_chip, // device type
     0xA0000000, // base address
-    0x00000400, // flash size
-    4, // page size
+    0x00080000, // flash size
+    256, // page size
     0, // reserved
     0xff, // blank value
-    100, // page program timeout
+    20, // page program timeout
     3000, // sector erase timeout
 
     // flash sectors
     {
-        {0x00000400, 0x00000000},
+        {0x00001000, 0x00000000},
         end_of_sectors
     }
 };
@@ -140,7 +154,35 @@ void __attribute__ ((noinline)) FeedWatchdog(void) {
 }
 
 int __attribute__ ((noinline)) Init(const uint32_t address, const uint32_t frequency, const uint32_t function) {
-    // TODO: implement init
+    using clock = target::io::system::clock;
+
+    // setup the flash wait state to 4 + 1 CPU clocks
+    target::io::system::flash::setup<4>();
+
+    // setup the clock to 96Mhz (this is using a 12Mhz oscillator)
+    // (((15 + 1) * 2 * 12Mhz) / (0 + 1) = 384Mhz) / (3 + 1) = 96Mhz
+    clock::set_main<clock::source::internal, 96'000'000, 47, 0, 3>();
+
+    // klib::clock::set(4'000'000);
+
+    // init the cs pin
+    cs::init();
+
+    // init the spi driver
+    spi::init<
+        klib::io::spi::mode::mode3, 1'000'000, 
+        klib::io::spi::bits::bit_8, true
+    >();
+
+    cs::template set<true>();
+
+    // init the memory using the spi and cs
+    memory::init();
+
+    // wait until the device is not busy
+    while (memory::is_busy()) {
+        klib::delay<klib::busy_wait>(klib::time::ms{3});
+    }
 
     return 0;
 }
@@ -151,14 +193,28 @@ int __attribute__ ((noinline)) UnInit(const uint32_t function) {
     return 0;
 }
 
-int __attribute__ ((noinline)) EraseSector(const uint32_t sector_address) {
-    // TODO: implement sector erase
+int __attribute__ ((noinline)) EraseSector(const uint32_t sector_address) {   
+    // do a sector erase
+    memory::erase(memory::erase_mode::sector, (sector_address & 0xfffffff));
+
+    // wait until the device is not busy
+    while (memory::is_busy()) {
+        // wait and do nothing
+        klib::delay<klib::busy_wait>(klib::time::ms{3});
+    }
 
     return 0;
 }
 
 int __attribute__ ((noinline)) ProgramPage(const uint32_t address, const uint32_t size, const uint8_t *const data) {
-    // TODO: implement program page
+    // write the data to the memory device
+    memory::write((address & 0xfffffff), data, size);
+
+    // wait until the device is not busy
+    while (memory::is_busy()) {
+        // wait and do nothing
+        klib::delay<klib::busy_wait>(klib::time::ms{3});
+    }
 
     return 0;
 }
@@ -184,7 +240,15 @@ int __attribute__ ((noinline)) SEGGER_OPEN_Program(uint32_t address, uint32_t si
 
 #if CHIP_ERASE == true
     int __attribute__ ((noinline)) EraseChip(void) {
-        // TODO: implement chip erase
+        // do a chip erase
+        memory::chip_erase();
+
+        // wait until the device is not busy
+        while (memory::is_busy()) {
+            // wait and do nothing
+            klib::delay<klib::busy_wait>(klib::time::ms{3});
+        }        
+
         return 0;
     }
 #endif
@@ -196,7 +260,7 @@ int __attribute__ ((noinline)) SEGGER_OPEN_Program(uint32_t address, uint32_t si
 
         for (uint32_t i = 0; i < NumSectors; i++) {
             // erase a sector
-            int r = EraseSector(SectorAddr);
+            int r = EraseSector((SectorAddr & 0xfffffff));
 
             // check for errors
             if (r) {
@@ -220,13 +284,33 @@ int __attribute__ ((noinline)) SEGGER_OPEN_Program(uint32_t address, uint32_t si
 
 #if !NATIVE_READ
     int __attribute__ ((noinline, __used__)) BlankCheck(const uint32_t address, const uint32_t size, const uint8_t blank_value) {
-        // TODO: implement verify
+        uint8_t buffer[256];
+        
+        // read all the memory and compare it with the blank value
+        for (uint32_t i = 0; i < size; /* do not update i here */) {
+            // get the size to read
+            const uint32_t s = klib::min(size - i, sizeof(buffer));
+
+            // read memory from device
+            memory::read((address & 0xfffffff) + i, buffer, s);
+
+            // check if all the data matches the blank value
+            for (uint32_t j = 0; j < s; j++) {
+                if (buffer[j] != blank_value) {
+                    return 1;
+                }
+            }
+
+            // update i
+            i += s;
+        }
 
         return 0;
     }
 
     int __attribute__ ((noinline, __used__)) SEGGER_OPEN_Read(const uint32_t address, const uint32_t size, uint8_t *const data) {
-        // TODO: add read implementation
+        // read memory
+        memory::read((address & 0xfffffff), data, size);
 
         return size;
     }

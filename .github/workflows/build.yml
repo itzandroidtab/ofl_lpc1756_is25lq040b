@@ -1,4 +1,4 @@
-name: flash loader template
+name: flash loader lpc1756 is25lq040b
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
+  BUILD_TYPE: MinSizeRel
 
 jobs:
   build:
@@ -17,8 +17,44 @@ jobs:
     # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        cpu: [ lpc1756 ]
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Fetching project
+        uses: actions/checkout@v3
+        with:
+          path: "${{github.workspace}}/ofl/"
+
+      - name: Fetching klib
+        uses: actions/checkout@v3
+        with:
+          repository: itzandroidtab/klib
+          path: "${{github.workspace}}/klib/"
+
+      - name: getting arm headers
+        uses: actions/checkout@v3
+        with:
+          repository: ARM-software/CMSIS_5
+          ref: 'develop'
+          fetch-depth: '1'
+          path: './CMSIS'
+
+      - name: moving arm headers
+        run: |
+          cp ${{github.workspace}}/CMSIS/CMSIS/Core/Include/* ${{github.workspace}}/klib/targets/arm/
+
+      - name: generating header
+        run: |
+          mkdir -p ${{github.workspace}}/klib/targets/${{matrix.cpu}}/docs
+          wget -q -O ${{github.workspace}}/klib/targets/${{matrix.cpu}}/docs/${{matrix.cpu}}.svd https://raw.githubusercontent.com/itzandroidtab/klib-svd/master/${{matrix.cpu}}.svd
+          wget -q -O ${{github.workspace}}/klib/svdconv.tbz2 https://github.com/Open-CMSIS-Pack/devtools/releases/download/tools%2Fsvdconv%2F3.3.44/svdconv-3.3.44-linux64-amd64.tbz2
+          tar -xf ${{github.workspace}}/klib/svdconv.tbz2 
+          chmod +x ${{github.workspace}}/klib/svdconv
+          
+          ${{github.workspace}}/klib/svdconv ${{github.workspace}}/klib/targets/${{matrix.cpu}}/docs/${{matrix.cpu}}.svd --generate=header -o ${{github.workspace}}/klib/targets/${{matrix.cpu}}/ > /dev/null || true
+          sed -i '/#include "system_/d' ${{github.workspace}}/klib/targets/${{matrix.cpu}}/${{matrix.cpu}}.h
 
       - name: arm-none-eabi-gcc install
         uses: carlosperate/arm-none-eabi-gcc-action@v1.6.0
@@ -31,8 +67,12 @@ jobs:
       - name: Configure CMake
         # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
         # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
-        run: CC=arm-none-eabi-gcc CXX=arm-none-eabi-g++ cmake -B ${{github.workspace}}/build
+        run: |
+          cd ${{github.workspace}}/ofl/
+          CC=arm-none-eabi-gcc CXX=arm-none-eabi-g++ cmake -B ${{github.workspace}}/ofl/build
 
       - name: Build
         # Build your program with the given configuration
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+        run: |
+          cd ${{github.workspace}}/ofl/
+          cmake --build ${{github.workspace}}/ofl/build --config ${{env.BUILD_TYPE}}
