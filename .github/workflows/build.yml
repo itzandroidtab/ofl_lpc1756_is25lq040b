@@ -83,7 +83,7 @@ jobs:
         with:
           name: ${{matrix.cpu}}
           path: |
-            ${{github.workspace}}/build/project/klib.elf
-            ${{github.workspace}}/build/project/klib.map
-            ${{github.workspace}}/build/project/klib.lss
-            ${{github.workspace}}/build/project/klib.memory
+            ${{github.workspace}}/ofl/build/flash_loader.elf
+            ${{github.workspace}}/ofl/build/flash_loader.map
+            ${{github.workspace}}/ofl/build/flash_loader.lss
+            ${{github.workspace}}/ofl/build/flash_loader.memory
