@@ -173,11 +173,9 @@ int __attribute__ ((noinline)) Init(const uint32_t address, const uint32_t frequ
     // setup the flash wait state to 4 + 1 CPU clocks
     target::io::system::flash::setup<4>();
 
-    // setup the clock to 96Mhz (this is using a 12Mhz oscillator)
-    // (((15 + 1) * 2 * 12Mhz) / (0 + 1) = 384Mhz) / (3 + 1) = 96Mhz
+    // setup the clock to 96Mhz (this is using the internal 4Mhz oscillator)
+    // (((47 + 1) * 2 * 4Mhz) / (0 + 1) = 384Mhz) / (3 + 1) = 96Mhz
     clock::set_main<clock::source::internal, 96'000'000, 47, 0, 3>();
-
-    // klib::clock::set(4'000'000);
 
     // init the cs pin
     cs::init();
