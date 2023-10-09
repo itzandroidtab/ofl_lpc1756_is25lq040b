@@ -60,7 +60,9 @@ using memory = klib::hardware::memory::is25lq040b<spi, cs>;
 #define CUSTOM_VERIFY (false)
 
 /**
- * @brief Allow changes in the sector arrangement on 
+ * @brief Enable changes to the sector layout at runtime. Can be used to create
+ * one flash loader that supports multiple chips (like multiple variants of the
+ * same NOR flash)
  * 
  */
 #define RUNTIME_SECTORS (false)
@@ -191,10 +193,10 @@ int __attribute__ ((noinline)) Init(const uint32_t address, const uint32_t frequ
     // init the memory using the spi and cs
     memory::init();
 
-    // wait until the device is not busy
-    while (memory::is_busy()) {
-        klib::delay<klib::busy_wait>(klib::time::ms{3});
-    }
+    // // wait until the device is not busy
+    // while (memory::is_busy()) {
+    //     klib::delay<klib::busy_wait>(klib::time::ms{3});
+    // }
 
     return 0;
 }
@@ -341,7 +343,7 @@ int __attribute__ ((noinline)) SEGGER_OPEN_Program(uint32_t address, uint32_t si
 
         // set the flash data
         for (uint32_t i = 0; i < info->count; i++) {
-            // update every sector
+            // set every sector (data pointer points is not set to something specific)
             info->sectors[i] = {
                 // set the start offset for the current sector
                 .offset = i * 0x100,
