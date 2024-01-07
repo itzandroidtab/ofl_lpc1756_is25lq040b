@@ -40,7 +40,6 @@ target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../k
 # set the interrupt method, the target and if we we support low power sleep
 target_compile_definitions(flash_loader PUBLIC "KLIB_IRQ=irq_ram")
 target_compile_definitions(flash_loader PUBLIC "TARGET_CPU=lpc1756")
-target_compile_definitions(flash_loader PUBLIC "TARGET_LOW_POWER_SLEEP=0")
 
 # enable C++20 support for the library
 target_compile_features(flash_loader PUBLIC cxx_std_20)
