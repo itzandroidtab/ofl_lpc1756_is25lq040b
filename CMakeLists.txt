@@ -34,7 +34,7 @@ add_executable(flash_loader
 
 # add the include directories for klib, the target and the arm files
 target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/")
-target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/targets/lpc1756/")
+target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/targets/chip/lpc1756/")
 target_include_directories(flash_loader PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../klib/targets/arm/")
 
 # set the interrupt method, the target and if we we support low power sleep

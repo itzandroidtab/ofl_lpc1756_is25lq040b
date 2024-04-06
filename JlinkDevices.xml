@@ -1,6 +1,0 @@
-<DataBase>
-  <Device>
-    <ChipInfo Vendor="NXP" Name="LPC1756"/>
-    <FlashBankInfo Name="Sflash" BaseAddr="0xA0000000" MaxSize="0x00080000" Loader="Devices/klib/flash_loader.elf" LoaderType="FLASH_ALGO_TYPE_OPEN"/>
-  </Device>  
-</DataBase>
